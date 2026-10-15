@@ -1022,6 +1022,34 @@ class TestByteLayout(unittest.TestCase):
     b.EndVector()
     self.assertBuilderEquals(b, [1, 0, 0, 0, 1, 0, 0, 0])  # padding
 
+  def test_invalid_string_does_not_poison_builder(self):
+    for value in (None, 12, []):
+      b = flatbuffers.Builder(0)
+      with self.assertRaises(TypeError):
+        b.CreateString(value)
+      self.assertFalse(b.nested)
+      self.assertEqual(b.Offset(), 0)
+      b.CreateString('valid')
+      b.StartObject(0)
+      b.Finish(b.EndObject())
+      self.assertTrue(b.Output())
+
+  def test_failed_encoding_does_not_poison_builder(self):
+    b = flatbuffers.Builder(0)
+    with self.assertRaises(UnicodeEncodeError):
+      b.CreateString('\u00e9', encoding='ascii')
+    self.assertFalse(b.nested)
+    b.CreateString('valid')
+
+  def test_invalid_byte_vector_does_not_poison_builder(self):
+    for value in (None, 12, 'text'):
+      b = flatbuffers.Builder(0)
+      with self.assertRaises(TypeError):
+        b.CreateByteVector(value)
+      self.assertFalse(b.nested)
+      self.assertEqual(b.Offset(), 0)
+      b.CreateByteVector(b'valid')
+
   def test_2xbyte_vector(self):
     b = flatbuffers.Builder(0)
     b.StartVector(flatbuffers.number_types.Uint8Flags.bytewidth, 2, 1)

@@ -475,16 +475,16 @@ class Builder(object):
     """CreateString writes a null-terminated byte string as a vector."""
 
     self.assertNotNested()
-    ## @cond FLATBUFFERS_INTERNAL
-    self.nested = True
-    ## @endcond
-
     if isinstance(s, compat.string_types):
       x = s.encode(encoding, errors)
     elif isinstance(s, compat.binary_types):
       x = s
     else:
       raise TypeError("non-string passed to CreateString")
+
+    ## @cond FLATBUFFERS_INTERNAL
+    self.nested = True
+    ## @endcond
 
     payload_len = len(x)
     self.Prep(N.UOffsetTFlags.bytewidth, (payload_len + 1) * N.Uint8Flags.bytewidth)
@@ -501,12 +501,12 @@ class Builder(object):
     """CreateString writes a byte vector."""
 
     self.assertNotNested()
+    if not isinstance(x, compat.binary_types):
+      raise TypeError("non-byte vector passed to CreateByteVector")
+
     ## @cond FLATBUFFERS_INTERNAL
     self.nested = True
     ## @endcond
-
-    if not isinstance(x, compat.binary_types):
-      raise TypeError("non-byte vector passed to CreateByteVector")
 
     data_len = len(x)
     self.Prep(N.UOffsetTFlags.bytewidth, data_len * N.Uint8Flags.bytewidth)

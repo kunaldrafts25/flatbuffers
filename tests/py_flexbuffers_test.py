@@ -1595,5 +1595,30 @@ class EncoderTest(unittest.TestCase):
     fbb.Finish()
 
 
+
+class EmptyMapKeyTest(unittest.TestCase):
+  def test_null_with_empty_key(self):
+    b = flexbuffers.Builder()
+    with b.Map():
+      b.Null('')
+    self.assertEqual(flexbuffers.Loads(b.Finish()), {'': None})
+
+  def test_container_with_empty_key(self):
+    for kind, expected in [('Map', {}), ('Vector', [1]), ('TypedVector', [1])]:
+      b = flexbuffers.Builder()
+      with b.Map():
+        with getattr(b, kind)(''):
+          if kind != 'Map':
+            b.Int(1)
+      self.assertEqual(flexbuffers.Loads(b.Finish()), {'': expected})
+
+  def test_empty_key_beside_named_key(self):
+    b = flexbuffers.Builder()
+    with b.Map():
+      b.Int('named', 2)
+      with b.Vector(''):
+        b.Int(1)
+    self.assertEqual(flexbuffers.Loads(b.Finish()), {'': [1], 'named': 2})
+
 if __name__ == '__main__':
   unittest.main()

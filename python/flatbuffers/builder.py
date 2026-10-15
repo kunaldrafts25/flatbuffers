@@ -461,14 +461,23 @@ class Builder(object):
     before calling CreateString.
     """
 
-    if not self.sharedStrings:
+    self.assertNotNested()
+    if isinstance(s, compat.string_types):
+      s = s.encode(encoding, errors)
+    elif isinstance(s, compat.binary_types):
+      s = bytes(s)
+    else:
+      raise TypeError("non-string passed to CreateSharedString")
+
+    # Pool by the bytes that will be serialized, including the requested
+    # encoding and error policy, rather than the unencoded input value.
+    if self.sharedStrings is None:
       self.sharedStrings = {}
     elif s in self.sharedStrings:
       return self.sharedStrings[s]
 
-    off = self.CreateString(s, encoding, errors)
+    off = self.CreateString(s)
     self.sharedStrings[s] = off
-
     return off
 
   def CreateString(self, s, encoding="utf-8", errors="strict"):

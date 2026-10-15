@@ -1053,6 +1053,44 @@ class TestByteLayout(unittest.TestCase):
     b.EndVector()
     self.assertBuilderEquals(b, [2, 0, 0, 0, 0xBA, 0xDC, 0xCD, 0xAB])
 
+  def test_shared_string_encoding_is_part_of_value(self):
+    b = flatbuffers.Builder(0)
+    text = '\u00e9'
+    utf8 = b.CreateSharedString(text)
+    latin1 = b.CreateSharedString(text, encoding='latin-1')
+    self.assertNotEqual(utf8, latin1)
+    self.assertEqual(utf8, b.CreateSharedString(text, encoding='utf8'))
+    self.assertEqual(latin1, b.CreateSharedString(b'\xe9'))
+    start = len(b.Bytes) - utf8 + 4
+    self.assertEqual(b.Bytes[start:start + 2], b'\xc3\xa9')
+    start = len(b.Bytes) - latin1 + 4
+    self.assertEqual(b.Bytes[start:start + 1], b'\xe9')
+
+  def test_shared_string_error_policy_is_not_bypassed(self):
+    b = flatbuffers.Builder(0)
+    b.CreateSharedString('\u00e9', encoding='ascii', errors='ignore')
+    with self.assertRaises(UnicodeEncodeError):
+      b.CreateSharedString('\u00e9', encoding='ascii', errors='strict')
+
+  def test_cached_shared_string_rejects_nested_builder(self):
+    b = flatbuffers.Builder(0)
+    b.CreateSharedString('cached')
+    b.StartObject(0)
+    with self.assertRaises(flatbuffers.builder.IsNestedError):
+      b.CreateSharedString('cached')
+    b.EndObject()
+
+  def test_shared_strings_deduplicate_serialized_bytes(self):
+    b = flatbuffers.Builder(0)
+    off = b.CreateSharedString('same')
+    self.assertEqual(off, b.CreateSharedString(b'same'))
+    size = b.Offset()
+    self.assertEqual(off, b.CreateSharedString('same', encoding='ascii'))
+    self.assertEqual(size, b.Offset())
+    b.Clear()
+    b.CreateSharedString('different')
+    self.assertEqual(len(b.sharedStrings), 1)
+
   def test_create_ascii_shared_string(self):
     b = flatbuffers.Builder(0)
     b.CreateSharedString('foo', encoding='ascii')
